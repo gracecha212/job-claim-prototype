@@ -522,7 +522,6 @@
 </head>
 <body>
 
-<audio id="claim-sound" src="success.mp3" preload="auto"></audio>
 
 <div class="tab-row">
   <nav class="concept-tabs" role="tablist">
@@ -795,7 +794,41 @@
   const slideThumb = document.getElementById('slideThumb');
   const slideFill  = document.getElementById('slideFill');
   const slideLabel = document.getElementById('slideLabel');
-  const sound      = document.getElementById('claim-sound');
+
+  /* ── ui-sounds.com · Playful · Key 5 (SUCCESS) ───────────── *
+   * arpFrequencies:[600,800,1000], arpNoteDuration:80ms         *
+   * waveform:sine, secondaryWaveform:triangle, detuneCents:5    *
+   * gain:0.18, attack:3ms, masterGain:0.20                      */
+  let _claimCtx = null;
+  function playClaimSound() {
+    if (!_claimCtx) _claimCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_claimCtx.state === 'suspended') _claimCtx.resume();
+    const ctx = _claimCtx;
+    const master = ctx.createGain();
+    master.gain.value = 0.20;
+    master.connect(ctx.destination);
+    const now = ctx.currentTime;
+    [600, 800, 1000].forEach((freq, i) => {
+      const t       = now + i * 0.080;
+      const noteDur = 0.080;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.linearRampToValueAtTime(0.18, t + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.001, t + noteDur);
+      g.connect(master);
+      // Primary: sine
+      const o1 = ctx.createOscillator();
+      o1.type = 'sine';
+      o1.frequency.value = freq;
+      o1.connect(g); o1.start(t); o1.stop(t + noteDur);
+      // Secondary: triangle, +5 cents
+      const o2 = ctx.createOscillator();
+      o2.type = 'triangle';
+      o2.frequency.value = freq;
+      o2.detune.value = 5;
+      o2.connect(g); o2.start(t); o2.stop(t + noteDur);
+    });
+  }
 
   const THUMB_W = 48;
   const PAD     = 4;
@@ -837,8 +870,7 @@
     slideFill.style.width  = (PAD + max + THUMB_W / 2) + 'px';
     slideLabel.style.opacity = '0';
 
-    sound.currentTime = 0;
-    sound.play().catch(() => {});
+    playClaimSound();
 
     setTimeout(() => {
       document.getElementById('screen-pre').classList.remove('active');
