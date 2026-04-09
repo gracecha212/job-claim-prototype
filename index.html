@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Claim Prototype</title>
+<style>
+  /* ── Thumbprint tokens ────────────────────────────────────── */
+  :root {
+    /* Colors */
+    --tp-black:       #2f3033;
+    --tp-black-300:   #676d73;
+    --tp-gray:        #d3d4d5;
+    --tp-gray-200:    #fafafa;
+    --tp-gray-300:    #e9eced;
+    --tp-white:       #ffffff;
+
+    --tp-blue-100:    #eaf6fa;
+    --tp-blue-300:    #79d2f2;
+    --tp-blue-400:    #009fd9;
+    --tp-blue-500:    #007fad;
+    --tp-blue-600:    #005979;
+
+    --tp-indigo-100:  #e8f1fd;
+    --tp-indigo-400:  #5968e2;
+    --tp-indigo-500:  #4f54b3;
+    --tp-indigo-600:  #383c80;
+
+    --tp-green-100:   #e1fdf3;
+    --tp-green-400:   #2db783;
+    --tp-green-500:   #16855b;
+
+    --tp-yellow-100:  #fdf7e7;
+    --tp-yellow-400:  #febe14;
+    --tp-yellow-600:  #714601;
+
+    --tp-red-400:     #ff5a5f;
+
+    /* Typography */
+    --tp-font:        'Mark Pro', 'Avenir Next', Avenir, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+    /* Spacing */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 16px;
+    --sp-4: 24px;
+    --sp-5: 32px;
+
+    /* Border radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-pill: 9999px;
+
+    /* Shadows */
+    --shadow-1: 0px 1px 3px rgba(0,0,0,0.10);
+    --shadow-2: 0px 2px 7px rgba(0,0,0,0.15);
+
+    /* Motion */
+    --ease-in:  cubic-bezier(0.50, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.40, 1);
+    --dur-2:    150ms;
+    --dur-3:    200ms;
+    --dur-4:    250ms;
+    --dur-5:    300ms;
+  }
+
+  /* ── Reset ────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Page shell ───────────────────────────────────────────── */
+  body {
+    background: #3c3c3c;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 28px;
+    padding: 40px var(--sp-5) 64px;
+    min-height: 100vh;
+    font-family: var(--tp-font);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Tab row (tabs + refresh) ─────────────────────────────── */
+  .tab-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  /* ── Concept tab bar ──────────────────────────────────────── */
+  .concept-tabs {
+    display: flex;
+    gap: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: var(--radius-pill);
+    padding: 4px;
+    flex-shrink: 0;
+  }
+  .ctab {
+    padding: 7px 18px;
+    border-radius: var(--radius-pill);
+    border: none;
+    background: transparent;
+    color: rgba(255,255,255,0.45);
+    font-family: var(--tp-font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 150ms, color 150ms;
+    white-space: nowrap;
+  }
+  .ctab:hover  { color: rgba(255,255,255,0.75); }
+  .ctab.active { background: var(--tp-white); color: var(--tp-black); }
+  .tab-divider {
+    width: 1px;
+    height: 18px;
+    background: rgba(255,255,255,0.2);
+    margin: 0 2px;
+    align-self: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Refresh button ───────────────────────────────────────── */
+  .refresh-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.55);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 150ms, color 150ms;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,0.20); color: rgba(255,255,255,0.9); }
+  .refresh-btn svg { transition: transform 420ms cubic-bezier(0,0,0.40,1); }
+  .refresh-btn.spin svg { transform: rotate(-360deg); }
+
+  /* ── Concept iframes ──────────────────────────────────────── */
+  .concept-frame {
+    display: none;
+    width: 390px;
+    height: 844px;
+    border: none;
+    border-radius: 44px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.55);
+    background: transparent;
+  }
+  .concept-frame.active { display: block; }
+
+  /* Screen visibility — must come AFTER the .screen base rule */
+
+  /* ── Phone shell ──────────────────────────────────────────── */
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--tp-white);
+    border-radius: 44px;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.55);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Status bar ───────────────────────────────────────────── */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 28px 0;
+    height: 48px;
+    flex-shrink: 0;
+  }
+  .status-time {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--tp-black);
+    letter-spacing: -0.3px;
+  }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+
+  /* ── Screen ───────────────────────────────────────────────── */
+  .screen {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+  .screen.active { display: flex; }
+
+  /* ── Nav ──────────────────────────────────────────────────── */
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--sp-2) var(--sp-3) var(--sp-1);
+    flex-shrink: 0;
+  }
+  .nav-btn {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer;
+    color: var(--tp-black); border-radius: var(--radius-pill);
+  }
+  .nav-btn:hover { background: var(--tp-gray-300); }
+  .nav-spacer { width: 36px; }
+
+  /* ── Page header ──────────────────────────────────────────── */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--sp-1) var(--sp-3) var(--sp-3);
+    flex-shrink: 0;
+  }
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--tp-black);
+    line-height: 1.15;
+    letter-spacing: -0.4px;
+  }
+  .page-header .subtitle {
+    font-size: 14px;
+    color: var(--tp-black-300);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  /* ── Avatar stack ─────────────────────────────────────────── */
+  .avatar-stack { display: flex; align-items: center; flex-shrink: 0; }
+  .avatar {
+    width: 40px; height: 40px;
+    border-radius: var(--radius-pill);
+    border: 2px solid var(--tp-white);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .avatar-brand {
+    background: #1a2f5e;
+    z-index: 2;
+  }
+  .avatar-brand img { width: 26px; }
+  .avatar-user {
+    background: #c6d9f0;
+    color: #1a2f5e;
+    margin-left: -10px;
+    z-index: 1;
+  }
+
+  /* ── Content padding wrapper ──────────────────────────────── */
+  .px { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+
+  /* ── Job title ────────────────────────────────────────────── */
+  .job-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--tp-black);
+    line-height: 1.3;
+    margin-bottom: var(--sp-2);
+  }
+
+  /* ── Urgency badge ────────────────────────────────────────── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    background: var(--tp-yellow-100);
+    color: var(--tp-yellow-600);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    margin-bottom: var(--sp-3);
+  }
+
+  /* ── Detail list ──────────────────────────────────────────── */
+  .detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: var(--sp-3);
+  }
+  .detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .detail-icon {
+    width: 20px; height: 20px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--tp-black-300);
+  }
+  .detail-body {
+    font-size: 16px;
+    color: var(--tp-black);
+    line-height: 1.4;
+  }
+  .detail-body .sub {
+    font-size: 14px;
+    color: var(--tp-black-300);
+    margin-top: 1px;
+  }
+  .detail-body.tp-link {
+    color: var(--tp-blue-400);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .detail-body.tp-link:hover { text-decoration: underline; }
+
+  /* ── Thick divider ────────────────────────────────────────── */
+  .section-divider {
+    height: 8px;
+    background: var(--tp-gray-300);
+    margin: var(--sp-3) 0;
+    flex-shrink: 0;
+  }
+
+  /* ── Section heading ──────────────────────────────────────── */
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 3px;
+  }
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--tp-black);
+  }
+  .section-count {
+    font-size: 14px;
+    color: var(--tp-black-300);
+  }
+  .section-desc {
+    font-size: 14px;
+    color: var(--tp-black-300);
+    line-height: 1.5;
+    margin-bottom: var(--sp-3);
+  }
+
+  /* ── Install card ─────────────────────────────────────────── */
+  .install-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1.5px solid var(--tp-gray-300);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-3);
+    background: var(--tp-gray-200);
+  }
+  .install-icon-wrap {
+    width: 44px; height: 44px;
+    background: var(--tp-indigo-100);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .install-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--tp-black);
+    line-height: 1.3;
+  }
+  .install-cta {
+    font-size: 14px;
+    color: var(--tp-blue-400);
+    font-weight: 700;
+    margin-top: 2px;
+    cursor: pointer;
+  }
+
+  /* ── CTA bar (sticks to bottom) ───────────────────────────── */
+  .cta-bar {
+    padding: var(--sp-3) var(--sp-3) var(--sp-1);
+    flex-shrink: 0;
+    margin-top: auto;
+  }
+
+  /* ── Thumbprint primary button ────────────────────────────── */
+  .tp-btn {
+    width: 100%;
+    height: 56px;
+    background: var(--tp-blue-400);
+    color: var(--tp-white);
+    border: none;
+    border-radius: var(--radius-lg);
+    font-family: var(--tp-font);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background var(--dur-2) var(--ease-out);
+    display: flex; align-items: center; justify-content: center;
+    gap: var(--sp-2);
+    letter-spacing: 0.01em;
+  }
+  .tp-btn:hover  { background: var(--tp-blue-500); }
+  .tp-btn:active { background: var(--tp-blue-600); }
+
+  /* ── Shimmer animation ────────────────────────────────────── */
+  @keyframes shimmer {
+    0%   { transform: translateX(-100%) skewX(-20deg); }
+    60%  { transform: translateX(260%) skewX(-20deg); }
+    100% { transform: translateX(260%) skewX(-20deg); }
+  }
+
+  /* ── Slide-to-claim ───────────────────────────────────────── */
+  .slide-wrap {
+    position: relative;
+    height: 56px;
+    background: linear-gradient(to right, #1cb5d8, #005979);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    user-select: none;
+    cursor: default;
+  }
+  .slide-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 0;
+    width: 40%;
+    background: linear-gradient(
+      to right,
+      rgba(255,255,255,0)    0%,
+      rgba(255,255,255,0.18) 50%,
+      rgba(255,255,255,0)    100%
+    );
+    transform: translateX(-100%) skewX(-20deg);
+    animation: shimmer 2.8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .slide-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0;
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: var(--radius-lg);
+    z-index: 1;
+  }
+  .slide-track-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tp-white);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    gap: var(--sp-2);
+    pointer-events: none;
+    z-index: 2;
+    transition: opacity var(--dur-3) var(--ease-out);
+  }
+  .slide-thumb {
+    position: absolute;
+    left: 4px; top: 4px; bottom: 4px;
+    width: 48px;
+    background: rgba(255,255,255,0.22);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    cursor: grab;
+    touch-action: none;
+    z-index: 3;
+  }
+  .slide-thumb:active { cursor: grabbing; background: rgba(255,255,255,0.32); }
+
+  /* ── Before the job ───────────────────────────────────────── */
+  .before-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--tp-black);
+    margin-bottom: var(--sp-3);
+  }
+  .task-row {
+    display: flex;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-3);
+    align-items: flex-start;
+  }
+  .task-icon-wrap {
+    width: 48px; height: 48px;
+    background: var(--tp-indigo-100);
+    border-radius: var(--radius-pill);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .task-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--tp-black);
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+  .task-desc {
+    font-size: 14px;
+    color: var(--tp-black-300);
+    line-height: 1.5;
+  }
+
+  /* ── Home indicator ───────────────────────────────────────── */
+  .home-bar {
+    width: 134px;
+    height: 5px;
+    background: var(--tp-black);
+    border-radius: var(--radius-pill);
+    opacity: 0.18;
+    margin: var(--sp-2) auto var(--sp-2);
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<audio id="claim-sound" src="success.mp3" preload="auto"></audio>
+
+<div class="tab-row">
+  <nav class="concept-tabs" role="tablist">
+    <button class="ctab active" data-show="original">Original</button>
+    <button class="ctab" data-show="a">A — Tap &amp; Confetti</button>
+    <button class="ctab" data-show="b">B — Hold to Claim</button>
+    <button class="ctab" data-show="c">C — Swipe Up</button>
+    <span class="tab-divider" aria-hidden="true"></span>
+    <button class="ctab" data-show="a-brand">A — Brand</button>
+    <button class="ctab" data-show="b-brand">B — Brand</button>
+    <button class="ctab" data-show="c-brand">C — Brand</button>
+  </nav>
+  <button class="refresh-btn" id="refreshBtn" title="Reset">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <path d="M1.5 7.5a6 6 0 116 6H3m0 0l2-2m-2 2l2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</div>
+
+<div class="phone" id="phone-original">
+
+  <!-- Status bar (shared) -->
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="none">
+        <rect x="0"    y="6" width="3" height="6" rx="0.5" fill="#2f3033"/>
+        <rect x="4.5"  y="4" width="3" height="8" rx="0.5" fill="#2f3033"/>
+        <rect x="9"    y="2" width="3" height="10" rx="0.5" fill="#2f3033"/>
+        <rect x="13.5" y="0" width="3" height="12" rx="0.5" fill="#2f3033"/>
+      </svg>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+        <path d="M8 9.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" fill="#2f3033"/>
+        <path d="M8 6C5.92 6 4.06 6.9 2.76 8.32l1.06 1.06A4.5 4.5 0 018 8a4.5 4.5 0 014.18 1.38l1.06-1.06A6 6 0 008 6z" fill="#2f3033"/>
+        <path d="M8 2.5C4.8 2.5 1.9 3.9.02 6.14l1.06 1.06A9 9 0 018 4.5a9 9 0 016.92 2.7l1.06-1.06A10.5 10.5 0 008 2.5z" fill="#2f3033" opacity="0.35"/>
+      </svg>
+      <svg width="25" height="12" viewBox="0 0 25 12" fill="none">
+        <rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="#2f3033" stroke-opacity="0.35"/>
+        <rect x="1.5" y="1.5" width="18" height="9" rx="2" fill="#2f3033"/>
+        <path d="M23 4v4a2 2 0 000-4z" fill="#2f3033" opacity="0.4"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── SCREEN 1: Pre-Claim ─────────────────────────────────── -->
+  <div class="screen active" id="screen-pre">
+
+      <div class="nav">
+        <button class="nav-btn" aria-label="Back">
+          <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
+            <path d="M9 1L1 9l8 8" stroke="#2f3033" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="nav-spacer"></div>
+      </div>
+
+      <div class="page-header px">
+        <div>
+          <h1>Ted L.</h1>
+          <div class="subtitle">Claimable job</div>
+        </div>
+        <div class="avatar-stack">
+          <div class="avatar avatar-brand">
+            <!-- Lowe's house icon, simplified -->
+            <svg width="24" height="20" viewBox="0 0 24 20" fill="none">
+              <path d="M12 1L2 8v11h7v-6h6v6h7V8L12 1z" fill="white" opacity="0.9"/>
+            </svg>
+          </div>
+          <div class="avatar avatar-user">TL</div>
+        </div>
+      </div>
+
+      <div class="px">
+        <div class="job-title">Lowe's plumbing installation</div>
+        <div class="badge">Claim by 1 pm</div>
+
+        <div class="detail-list">
+          <div class="detail-row">
+            <!-- Calendar icon -->
+            <svg class="detail-icon" viewBox="0 0 20 20" fill="none">
+              <rect x="2.5" y="4.5" width="15" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M2.5 8.5h15M6.5 2.5v3M13.5 2.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <div class="detail-body">
+              Tues, Feb 21
+              <div class="sub">9 am–12 pm arrival</div>
+            </div>
+          </div>
+          <div class="detail-row">
+            <!-- Dollar icon -->
+            <svg class="detail-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M10 5.5v9M7.5 13.5c0 .83 1.12 1.5 2.5 1.5s2.5-.67 2.5-1.5S11.38 12 10 12s-2.5-.67-2.5-1.5S8.62 9 10 9s2.5.67 2.5 1.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+            </svg>
+            <div class="detail-body">$140 earnings</div>
+          </div>
+          <div class="detail-row">
+            <!-- Location icon -->
+            <svg class="detail-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M10 2a6 6 0 00-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 00-6-6z" stroke="currentColor" stroke-width="1.5"/>
+              <circle cx="10" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+            <div class="detail-body">
+              Portland, OR 20385
+              <div class="sub">View exact address after claiming</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider"></div>
+
+      <div class="px">
+        <div class="section-head">
+          <div class="section-title">Installations</div>
+          <div class="section-count">1 total</div>
+        </div>
+        <div class="section-desc">Review these requirements for completing each type of installation.</div>
+        <div class="install-card">
+          <div class="install-icon-wrap">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="3" y="4.5" width="16" height="2" rx="1" fill="#5968e2"/>
+              <rect x="3" y="9.5" width="16" height="2" rx="1" fill="#5968e2"/>
+              <rect x="3" y="14.5" width="9" height="2" rx="1" fill="#5968e2"/>
+            </svg>
+          </div>
+          <div>
+            <div class="install-name">Labor faucet install</div>
+            <div class="install-cta">View requirements</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cta-bar">
+        <div class="slide-wrap" id="slideWrap">
+          <div class="slide-fill" id="slideFill"></div>
+          <div class="slide-thumb" id="slideThumb">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M7 4l6 6-6 6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="slide-track-label" id="slideLabel">
+            Slide to claim
+          </div>
+        </div>
+      </div>
+
+      <div class="home-bar"></div>
+    </div><!-- /screen-pre -->
+
+  <!-- ── SCREEN 2: Just Claimed ──────────────────────────────── -->
+  <div class="screen" id="screen-claimed">
+
+      <div class="nav">
+        <div class="nav-spacer"></div>
+        <button class="nav-btn" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 2l12 12M14 2L2 14" stroke="#2f3033" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="page-header px">
+        <div>
+          <h1>Job claimed!</h1>
+          <div class="subtitle">We sent Ted a confirmation.</div>
+        </div>
+        <div class="avatar-stack">
+          <div class="avatar avatar-brand">
+            <svg width="24" height="20" viewBox="0 0 24 20" fill="none">
+              <path d="M12 1L2 8v11h7v-6h6v6h7V8L12 1z" fill="white" opacity="0.9"/>
+            </svg>
+          </div>
+          <div class="avatar avatar-user">TL</div>
+        </div>
+      </div>
+
+      <div class="px">
+        <div class="job-title">Lowe's plumbing installation</div>
+
+        <div class="detail-list">
+          <div class="detail-row">
+            <svg class="detail-icon" viewBox="0 0 20 20" fill="none">
+              <rect x="2.5" y="4.5" width="15" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M2.5 8.5h15M6.5 2.5v3M13.5 2.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <div class="detail-body">
+              Tues, Feb 21
+              <div class="sub">9 am–12 pm arrival</div>
+            </div>
+          </div>
+          <div class="detail-row">
+            <svg class="detail-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M10 5.5v9M7.5 13.5c0 .83 1.12 1.5 2.5 1.5s2.5-.67 2.5-1.5S11.38 12 10 12s-2.5-.67-2.5-1.5S8.62 9 10 9s2.5.67 2.5 1.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/>
+            </svg>
+            <div class="detail-body">$140 earnings</div>
+          </div>
+          <div class="detail-row">
+            <svg class="detail-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M10 2a6 6 0 00-6 6c0 4.5 6 10 6 10s6-5.5 6-10a6 6 0 00-6-6z" stroke="currentColor" stroke-width="1.5"/>
+              <circle cx="10" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+            <a href="#" class="detail-body tp-link">123 Apple St. Portland, OR 97215</a>
+          </div>
+          <div class="detail-row">
+            <svg class="detail-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M4 3.5h3l1.5 4-2 1.5a10 10 0 005 5l1.5-2 4 1.5V17a1.5 1.5 0 01-1.5 1.5C7 18.5 1.5 9.5 1.5 5A1.5 1.5 0 013 3.5h1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            <a href="#" class="detail-body tp-link">456-466-2453</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider"></div>
+
+      <div class="px">
+        <div class="before-title">Before the job</div>
+
+        <div class="task-row">
+          <div class="task-icon-wrap">
+            <!-- Person + checkmark icon -->
+            <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+              <circle cx="11" cy="9" r="4" stroke="#5968e2" stroke-width="1.75"/>
+              <path d="M3 22c0-4.42 3.58-8 8-8h2" stroke="#5968e2" stroke-width="1.75" stroke-linecap="round"/>
+              <path d="M17 17l2.5 2.5L24 15" stroke="#5968e2" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="task-title">Add background check details.</div>
+            <div class="task-desc">Provide details for the team members who will be on site. This is a requirement to get paid for this job.</div>
+          </div>
+        </div>
+
+        <div class="task-row">
+          <div class="task-icon-wrap">
+            <!-- Handshake / wave icon -->
+            <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+              <path d="M4 14c2-5 9-8 14-4" stroke="#5968e2" stroke-width="1.75" stroke-linecap="round"/>
+              <path d="M22 12c-2 5-9 8-14 4" stroke="#5968e2" stroke-width="1.75" stroke-linecap="round"/>
+              <circle cx="5.5"  cy="12.5" r="2" fill="#5968e2"/>
+              <circle cx="20.5" cy="13.5" r="2" fill="#5968e2"/>
+            </svg>
+          </div>
+          <div>
+            <div class="task-title">Coordinate with the customer.</div>
+            <div class="task-desc">Reach out to confirm they've received their order from Lowe's, and let them know when you'll arrive on the day of the job.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cta-bar">
+        <button class="tp-btn">Set up direct deposit</button>
+      </div>
+
+      <div class="home-bar"></div>
+    </div><!-- /screen-claimed -->
+
+</div><!-- /phone -->
+
+<iframe class="concept-frame" id="frame-a" src="concepts.html?show=a" title="Concept A"></iframe>
+<iframe class="concept-frame" id="frame-b" src="concepts.html?show=b" title="Concept B"></iframe>
+<iframe class="concept-frame" id="frame-c" src="concepts.html?show=c" title="Concept C"></iframe>
+<iframe class="concept-frame" id="frame-a-brand" src="concepts.html?show=a&sounds=brand" title="Concept A Brand"></iframe>
+<iframe class="concept-frame" id="frame-b-brand" src="concepts.html?show=b&sounds=brand" title="Concept B Brand"></iframe>
+<iframe class="concept-frame" id="frame-c-brand" src="concepts.html?show=c&sounds=brand" title="Concept C Brand"></iframe>
+
+<script>
+  const slideWrap  = document.getElementById('slideWrap');
+  const slideThumb = document.getElementById('slideThumb');
+  const slideFill  = document.getElementById('slideFill');
+  const slideLabel = document.getElementById('slideLabel');
+  const sound      = document.getElementById('claim-sound');
+
+  const THUMB_W = 48;
+  const PAD     = 4;
+
+  let dragging = false;
+  let startX   = 0;
+  let posX     = 0;
+
+  function trackMax() {
+    return slideWrap.offsetWidth - THUMB_W - PAD * 2;
+  }
+
+  function applyPos(x) {
+    const max  = trackMax();
+    x = Math.max(0, Math.min(x, max));
+    slideThumb.style.left  = (PAD + x) + 'px';
+    slideFill.style.width  = (PAD + x + THUMB_W / 2) + 'px';
+    slideLabel.style.opacity = Math.max(0, 1 - (x / max) * 2.2);
+    return x / max;
+  }
+
+  function snapBack() {
+    slideThumb.style.transition = 'left 300ms cubic-bezier(0,0,0.40,1)';
+    slideFill.style.transition  = 'width 300ms cubic-bezier(0,0,0.40,1)';
+    posX = 0;
+    applyPos(0);
+    slideLabel.style.opacity = '1';
+    setTimeout(() => {
+      slideThumb.style.transition = '';
+      slideFill.style.transition  = '';
+    }, 320);
+  }
+
+  function triggerClaim() {
+    const max = trackMax();
+    slideThumb.style.transition = 'left 180ms cubic-bezier(0.50,0,1,1)';
+    slideFill.style.transition  = 'width 180ms cubic-bezier(0.50,0,1,1)';
+    slideThumb.style.left  = (PAD + max) + 'px';
+    slideFill.style.width  = (PAD + max + THUMB_W / 2) + 'px';
+    slideLabel.style.opacity = '0';
+
+    sound.currentTime = 0;
+    sound.play().catch(() => {});
+
+    setTimeout(() => {
+      document.getElementById('screen-pre').classList.remove('active');
+      document.getElementById('screen-claimed').classList.add('active');
+    }, 220);
+  }
+
+  slideThumb.addEventListener('mousedown', e => {
+    dragging = true;
+    startX   = e.clientX - posX;
+    slideThumb.style.transition = '';
+    slideFill.style.transition  = '';
+    e.preventDefault();
+  });
+
+  slideThumb.addEventListener('touchstart', e => {
+    dragging = true;
+    startX   = e.touches[0].clientX - posX;
+    slideThumb.style.transition = '';
+    slideFill.style.transition  = '';
+    e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    posX = e.clientX - startX;
+    const progress = applyPos(posX);
+    if (progress >= 0.92) { dragging = false; triggerClaim(); }
+  });
+
+  window.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    posX = e.touches[0].clientX - startX;
+    const progress = applyPos(posX);
+    if (progress >= 0.92) { dragging = false; triggerClaim(); }
+  }, { passive: false });
+
+  window.addEventListener('mouseup',  () => { if (dragging) { dragging = false; snapBack(); } });
+  window.addEventListener('touchend', () => { if (dragging) { dragging = false; snapBack(); } });
+
+  /* ── Reset original to pre-claim state ───────────────────── */
+  function resetOriginal() {
+    document.getElementById('screen-pre').classList.add('active');
+    document.getElementById('screen-claimed').classList.remove('active');
+    dragging = false;
+    posX = 0;
+    slideThumb.style.transition = 'left 300ms cubic-bezier(0,0,0.40,1)';
+    slideFill.style.transition  = 'width 300ms cubic-bezier(0,0,0.40,1)';
+    slideThumb.style.left = PAD + 'px';
+    slideFill.style.width = '0';
+    slideLabel.style.opacity = '1';
+    setTimeout(() => {
+      slideThumb.style.transition = '';
+      slideFill.style.transition  = '';
+    }, 320);
+  }
+
+  /* ── Concept tab switcher ─────────────────────────────────── */
+  const phoneOriginal = document.getElementById('phone-original');
+  const frames = {
+    a:         document.getElementById('frame-a'),
+    b:         document.getElementById('frame-b'),
+    c:         document.getElementById('frame-c'),
+    'a-brand': document.getElementById('frame-a-brand'),
+    'b-brand': document.getElementById('frame-b-brand'),
+    'c-brand': document.getElementById('frame-c-brand'),
+  };
+
+  document.querySelector('.concept-tabs').addEventListener('click', e => {
+    const btn = e.target.closest('.ctab');
+    if (!btn) return;
+    const show = btn.dataset.show;
+
+    // Update pill state
+    document.querySelectorAll('.ctab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Show/hide views
+    const isOriginal = show === 'original';
+    phoneOriginal.style.display = isOriginal ? '' : 'none';
+    Object.entries(frames).forEach(([key, frame]) => {
+      frame.classList.toggle('active', key === show);
+    });
+  });
+
+  /* ── Refresh button — resets ALL concepts at once ─────────── */
+  const refreshBtn = document.getElementById('refreshBtn');
+  refreshBtn.addEventListener('click', () => {
+    // Spin the icon
+    refreshBtn.classList.remove('spin');
+    void refreshBtn.offsetWidth;
+    refreshBtn.classList.add('spin');
+    setTimeout(() => refreshBtn.classList.remove('spin'), 440);
+
+    // Reset original slide button
+    resetOriginal();
+    // Reload every iframe
+    Object.values(frames).forEach(frame => { frame.src = frame.src; });
+  });
+</script>
+</body>
+</html>
